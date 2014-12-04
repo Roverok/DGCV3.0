@@ -421,11 +421,11 @@ AC_CHECK_HEADERS([stdio.h stdlib.h unistd.h strings.h sys/types.h sys/stat.h])
 
 dnl Check for MSG_NOSIGNAL
 AC_MSG_CHECKING(for MSG_NOSIGNAL)
-AC_TRY_COMPILE([#include <sys/socket.h>],
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([(#include <sys/socket.h>],
  [ int f = MSG_NOSIGNAL; ],
  [ AC_MSG_RESULT(yes); AC_DEFINE(HAVE_MSG_NOSIGNAL, 1,[Define this symbol if you have MSG_NOSIGNAL]) ],
  [ AC_MSG_RESULT(no)]
-)
+))])
 
 LEVELDB_CPPFLAGS=
 LIBLEVELDB=
