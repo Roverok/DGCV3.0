@@ -14,34 +14,61 @@ AH_TOP([#ifndef DIGITALCOIN_CONFIG_H])
 AH_TOP([#define DIGITALCOIN_CONFIG_H])
 AH_BOTTOM([#endif //DIGITALCOIN_CONFIG_H])
 
-# This m4 will only be used if a system copy cannot be found. This is helpful
-# on systems where autotools are installed but the pkg-config macros are not in
-# a default location. It is currently used for building on OSX where autotools
-# are preinstalled but pkg-config comes from macports or homebrew. It should
-# probably be removed when building on <= 10.6 is no longer supported.
-m4_include([pkg.m4])
+dnl faketime breaks configure and is only needed for make. Disable it here. 	24	dnl faketime breaks configure and is only needed for make. Disable it here. 
+unset FAKETIME 
 
-dnl faketime breaks configure and is only needed for make. Disable it here.
-unset FAKETIME
-
+dnl Automake init set-up and checks 	 	
+AM_INIT_AUTOMAKE([no-define subdir-objects foreign]) 	 	
+	 	 	
+dnl faketime messes with timestamps and causes configure to be re-run. 	 	
+dnl --disable-maintainer-mode can be used to bypass this. 	 	
+AM_MAINTAINER_MODE([enable]) 	 	
+	 	 		
+dnl make the compilation flags quiet unless V=1 is used 	 	
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])]) 	 	
+ 	 	
+dnl Compiler checks (here before libtool). 
 if test "x${CXXFLAGS+set}" = "xset"; then
   CXXFLAGS_overridden=yes
 else
   CXXFLAGS_overridden=no
 fi
+AC_PROG_CXX 	 	
+m4_ifdef([AC_PROG_OBJCXX],[AC_PROG_OBJCXX])
 
-dnl ==============================================================
-dnl Setup for automake
-dnl ==============================================================
+dnl By default, libtool for mingw refuses to link static libs into a dll for	33	dnl ============================================================== 
+dnl fear of mixing pic/non-pic objects, and import/export complications. Since	34	dnl Setup for automake 
+dnl we have those under control, re-enable that functionality.	35	dnl ============================================================== 
+case $host in 	 	
+  *mingw*) 	 	
+    lt_cv_deplibs_check_method="pass_all" 	 	
+  ;; 	 	
+esac 	 	
+dnl Libtool init checks. 	 	
+LT_INIT([pic-only]) 
 
-AM_INIT_AUTOMAKE([no-define subdir-objects foreign])
+dnl Check/return PATH for base programs
+AC_PATH_TOOL(AR, ar) 	 	
+AC_PATH_TOOL(RANLIB, ranlib) 	 	
+AC_PATH_TOOL(STRIP, strip) 	 	
+AC_PATH_TOOL(GCOV, gcov) 	 	
+AC_PATH_PROG(LCOV, lcov) 	 	
+AC_PATH_PROG(JAVA, java) 	 	
+AC_PATH_PROG(GENHTML, genhtml) 	 	
+AC_PATH_PROG([GIT], [git]) 	 	
+AC_PATH_PROG(CCACHE,ccache) 	 	
+AC_PATH_PROG(XGETTEXT,xgettext) 	 	
+AC_PATH_PROG(HEXDUMP,hexdump) 
 
-dnl faketime messes with timestamps and causes configure to be re-run.
-dnl --disable-maintainer-mode can be used to bypass this.
-AM_MAINTAINER_MODE([enable])
+# This m4 will only be used if a system copy cannot be found. This is helpful
+# on systems where autotools are installed but the pkg-config macros are not in	
+# a default location. It is currently used for building on OSX where autotools
+# are preinstalled but pkg-config comes from macports or homebrew. It should 	 	
+# probably be removed when building on <= 10.6 is no longer supported. 	 	
+m4_include([pkg.m4]) 
 
-dnl make the compilation flags quiet unless V=1 is used
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+dnl pkg-config check.	
+PKG_PROG_PKG_CONFIG
 
 # Enable wallet
 AC_ARG_ENABLE([wallet],
@@ -88,6 +115,12 @@ AC_ARG_ENABLE([hardening],
   [attempt to harden the resulting executables (default is yes)])],
   [use_hardening=$enableval],
   [use_hardening=yes])
+
+AC_ARG_ENABLE([reduce-exports], 	 	
+  [AS_HELP_STRING([--enable-reduce-exports], 	 	
+  [attempt to reduce exported symbols in the resulting executables (default is yes)])], 	 	
+  [use_reduce_exports=$enableval], 	 	
+  [use_reduce_exports=auto]) 	 	
 
 AC_ARG_ENABLE([ccache],
   [AS_HELP_STRING([--enable-ccache],
@@ -701,7 +734,8 @@ AC_SUBST(CLIENT_VERSION_BUILD, _CLIENT_VERSION_BUILD)
 AC_SUBST(CLIENT_VERSION_IS_RELEASE, _CLIENT_VERSION_IS_RELEASE)
 AC_SUBST(COPYRIGHT_YEAR, _COPYRIGHT_YEAR)
 
-
+AC_SUBST(RELDFLAGS)
+AC_SUBST(LIBTOOL_APP_LDFLAGS) 
 AC_SUBST(USE_UPNP)
 AC_SUBST(USE_QRCODE)
 AC_SUBST(INCLUDES)
