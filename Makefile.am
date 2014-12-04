@@ -1,4 +1,4 @@
-ACLOCAL_AMFLAGS = -I src/m4
+ACLOCAL_AMFLAGS = -I build-aux/m4
 SUBDIRS = src
 .PHONY: deploy
 
@@ -26,7 +26,9 @@ WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/digitalcoin.ico \
 
 OSX_PACKAGING = $(OSX_DEPLOY_SCRIPT) $(OSX_FANCY_PLIST) $(OSX_INSTALLER_ICONS) \
   $(top_srcdir)/contrib/macdeploy/background.png \
-  $(top_srcdir)/contrib/macdeploy/DS_Store
+  $(top_srcdir)/contrib/macdeploy/DS_Store \
+  $(top_srcdir)/contrib/macdeploy/detached-sig-apply.sh \
+  $(top_srcdir)/contrib/macdeploy/detached-sig-create.sh
 
 COVERAGE_INFO = baseline_filtered_combined.info baseline.info block_test.info \
   leveldb_baseline.info test_digitalcoin_filtered.info total_coverage.info \
@@ -56,6 +58,9 @@ $(DIGITALCOIN_WIN_INSTALLER): $(DIGITALCOIND_BIN) $(DIGITALCOIN_QT_BIN) $(DIGITA
 $(DIGITALCOIND_BIN) $(DIGITALCOIN_QT_BIN) $(DIGITALCOIN_CLI_BIN):
 	make -C $(dir $@) $(notdir $@)
 
+$(if $(findstring src/,$(MAKECMDGOALS)),$(MAKECMDGOALS), none): FORCE
+ 	$(MAKE) -C src $(patsubst src/%,%,$@)
+
 $(OSX_APP)/Contents/PkgInfo:
 	$(MKDIR_P) $(@D)
 	@echo "APPL????" > $@
@@ -72,13 +77,13 @@ $(OSX_APP)/Contents/Resources/digitalcoin.icns: $(OSX_INSTALLER_ICONS)
 	$(MKDIR_P) $(@D)
 	$(INSTALL_DATA) $< $@
 
-$(OSX_APP)/Contents/MacOS/Bitcoin-Qt: $(DIGITALCOIN_QT_BIN)
+$(OSX_APP)/Contents/MacOS/Digitalcoin-Qt: $(DIGITALCOIN_QT_BIN)
 	$(MKDIR_P) $(@D)
 	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM)  $< $@
 
 OSX_APP_BUILT=$(OSX_APP)/Contents/PkgInfo $(OSX_APP)/Contents/Resources/empty.lproj \
   $(OSX_APP)/Contents/Resources/digitalcoin.icns $(OSX_APP)/Contents/Info.plist \
-  $(OSX_APP)/Contents/MacOS/Bitcoin-Qt
+  $(OSX_APP)/Contents/MacOS/Digitalcoin-Qt
 
 if BUILD_DARWIN
 $(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
@@ -91,8 +96,31 @@ $(OSX_DMG): $(OSX_APP_BUILT) $(OSX_PACKAGING)
 	$(INSTALL) contrib/macdeploy/background.png dist/.background
 	$(INSTALL) contrib/macdeploy/DS_Store dist/.DS_Store
 	cd dist; $(LN_S) /Applications Applications
-	$(GENISOIMAGE) -no-cache-inodes -l -probe -V "Bitcoin-Qt" -no-pad -r -apple -o $@ dist
+	$(GENISOIMAGE) -no-cache-inodes -l -probe -V "Digitalcoin-Qt" -no-pad -r -apple -o $@ dist
 endif
+
+APP_DIST_DIR=$(top_builddir)/dist
+APP_DIST_EXTRAS=$(APP_DIST_DIR)/.background/background.png $(APP_DIST_DIR)/.DS_Store $(APP_DIST_DIR)/Applications
+ 
+$(APP_DIST_DIR)/Applications:
+ 	@rm -f $@
+ 	@cd $(@D); $(LN_S) /Applications $(@F)
+ 
+$(APP_DIST_EXTRAS): $(APP_DIST_DIR)/$(OSX_APP)/Contents/MacOS/Digitalcoin-Qt
+ 
+$(OSX_DMG): $(APP_DIST_EXTRAS)
+ 	$(GENISOIMAGE) -no-cache-inodes -D -l -probe -V "Digitalcoin-Qt" -no-pad -r -apple -o $@ dist
+ 
+$(APP_DIST_DIR)/.background/background.png:
+ 	$(MKDIR_P) $(@D)
+ 	$(INSTALL) $(top_srcdir)/contrib/macdeploy/background.png $@
+$(APP_DIST_DIR)/.DS_Store:
+ 	$(INSTALL) $(top_srcdir)/contrib/macdeploy/DS_Store $@
+ 
+$(APP_DIST_DIR)/$(OSX_APP)/Contents/MacOS/Digitalcoin-Qt: $(OSX_APP_BUILT) $(OSX_PACKAGING)
+ 	INSTALLNAMETOOL=$(INSTALLNAMETOOL)  OTOOL=$(OTOOL) STRIP=$(STRIP) $(OSX_DEPLOY_SCRIPT) $(OSX_APP) -translations-dir=$(QT_TRANSLATION_DIR) -add-qt-tr $(OSX_QT_TRANSLATIONS) -verbose 2
+ 
+deploydir: $(APP_DIST_EXTRAS)
 
 if TARGET_DARWIN
 appbundle: $(OSX_APP_BUILT)
@@ -101,6 +129,16 @@ endif
 if TARGET_WINDOWS
 deploy: $(DIGITALCOIN_WIN_INSTALLER)
 endif
+
+$(DIGITALCOIN_QT_BIN): FORCE
+ 	$(MAKE) -C src qt/$(@F)
+ 
+$(DIGITALCOIND_BIN): FORCE
+ 	$(MAKE) -C src $(@F)
+ 
+$(DIGITALCOIN_CLI_BIN): FORCE
+ 	$(MAKE) -C src $(@F)
+ 
 
 if USE_LCOV
 
@@ -162,7 +200,7 @@ check-local:
 	@qa/pull-tester/run-digitalcoind-for-test.sh $(JAVA) -jar $(JAVA_COMPARISON_TOOL) qa/tmp/compTool $(COMPARISON_TOOL_REORG_TESTS)
 endif
 
-EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/pull-tester.sh qa/rpc-tests $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
+EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.sh qa/pull-tester/run-digitalcoin-cli qa/rpc-tests $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING)
 
 CLEANFILES = $(OSX_DMG) $(DIGITALCOIN_WIN_INSTALLER)
 
