@@ -371,14 +371,14 @@ if test x$use_glibc_compat != xno; then
   #__fdelt_chk's params and return type have changed from long unsigned int to long int.
   # See which one is present here.
   AC_MSG_CHECKING(__fdelt_chk type)
-  AC_TRY_COMPILE([#ifdef _FORTIFY_SOURCE
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([(#ifdef _FORTIFY_SOURCE
                     #undef _FORTIFY_SOURCE
                   #endif
                   #define _FORTIFY_SOURCE 2
                   #include <sys/select.h>
      extern "C" long unsigned int __fdelt_warn(long unsigned int);],[],
     [ fdelt_type="long unsigned int"],
-    [ fdelt_type="long int"])
+    [ fdelt_type="long int"])])]
   AC_MSG_RESULT($fdelt_type)
   AC_DEFINE_UNQUOTED(FDELT_TYPE, $fdelt_type,[parameter and return value type for __fdelt_chk])
 
